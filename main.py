@@ -3,37 +3,40 @@ import os
 import requests
 import json 
 import time
+import asyncio
 
-def run_code(code,language):
-        url = 'http://api.paiza.io:80/runners/'
+def runCode(code, language):
+    url = 'http://api.paiza.io:80/runners/'
+    
+    #running code
+    create = 'create'
+    post_data = {
+        "source_code": code,
+        "language":language,
+        "api_key":"guest"
+    }
+    RunnigId = requests.post(url+create, data=post_data).json()['id']
+
+    #check the status 
+    r_stat = 'running'
+    while not r_stat == 'completed':
+        time.sleep(0.1)
+        status = 'get_status'
+        status_data = {
+            'id':RunnigId,
+            'api_key':'guest'
+            }
+        r_stat = requests.get(url+status,params=status_data).json()['status']
+
+    #get the successs or error result
+    details = 'get_details'
+    data = {'id':RunnigId,
+            'api_key':'guest'}
+    r_det = requests.get(url+details,params=data).json()
+    return r_det
         
-        #running code
-        create = 'create'
-        post_data = {
-            "source_code": code,
-            "language":language,
-            "api_key":"guest"
-        }
-        RunnigId = requests.post(url+create, data=post_data).json()['id']
 
-        #check the status 
-        r_stat = 'running'
-        while not r_stat == 'completed':
-            time.sleep(0.1)
-            status = 'get_status'
-            status_data = {'id':RunnigId,
-                            'api_key':'guest'}
-            r_stat = requests.get(url+status,params=status_data).json()['status']
-
-        #get the successs or error result
-        details = 'get_details'
-        data = {'id':RunnigId,
-                'api_key':'guest'}
-        r_det = requests.get(url+details,params=data).json()
-        return r_det
-        
-
-class code_runner(discord.Client):
+class codeRunner(discord.Client):
     #ready to start up!
     async def on_ready(self):
         print('Logged on as {0}!'.format(self.user))
@@ -66,7 +69,7 @@ class code_runner(discord.Client):
             else:
                 language = 'python3'
 
-            r_det = run_code(code,language)
+            r_det = runCode(code,language)
             if r_det['stderr']:
                 res = '```\n{}\n```'\
                     .format(r_det['stderr'])
@@ -78,6 +81,6 @@ class code_runner(discord.Client):
                 return await send(res)
 
 if __name__ == "__main__":
-    Token = os.environ.get("DISCORD_BOT_TOKEN")
-    app = code_runner()
+    Token = os.environ["DISCORD_BOT_TOKEN"]
+    app = codeRunner()
     app.run(Token)
